@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package seedling_rl;
+
+service Learner {
+  rpc GetActions(Observations) returns (Actions) {};
+}
+
+message Observations{
+  bytes observation = 1;
+}
+
+message Actions{
+  bytes actions = 1;
+}
+
+
