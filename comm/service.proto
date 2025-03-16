@@ -3,15 +3,15 @@ syntax = "proto3";
 package seedling_rl;
 
 service Learner {
-  rpc GetActions(Observations) returns (Actions) {};
+  rpc getAction(Request) returns (Response) {};
+  rpc getActionStream(stream Request) returns (stream Response) {};
 }
 
-message Observations{
+message Request{
   bytes observation = 1;
 }
-
-message Actions{
-  bytes actions = 1;
+message Response{
+  bytes action = 1;
 }
 
 

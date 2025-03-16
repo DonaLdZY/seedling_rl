@@ -10,6 +10,7 @@ class DQN:
         self.eval_mode = setting.get('eval_mode', False)
         if not self.eval_mode:
             self.train_step = 0
+            self.save_name = setting.get('save_name', 'DQN')
             if 'optimizer' in setting:
                 self.optimizer = setting['optimizer']
             else:
@@ -63,6 +64,8 @@ class DQN:
 
         self.train_step+=1
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+        if self.train_step % self.sync_target_step == 0:
+            self.save_model(self.save_name)
         return self.train_step, loss
 
     def get_action(self, observation, evaluate=False):

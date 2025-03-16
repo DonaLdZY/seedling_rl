@@ -1,0 +1,1 @@
+python3 -m grpc_tools.protoc -I comm/ --python_out=comm/ --pyi_out=comm/ --grpc_python_out=comm/ comm/service.proto 

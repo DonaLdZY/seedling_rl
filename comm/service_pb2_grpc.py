@@ -34,17 +34,28 @@ class LearnerStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetActions = channel.unary_unary(
-                '/seedling_rl.Learner/GetActions',
-                request_serializer=service__pb2.Observations.SerializeToString,
-                response_deserializer=service__pb2.Actions.FromString,
+        self.getAction = channel.unary_unary(
+                '/seedling_rl.Learner/getAction',
+                request_serializer=service__pb2.Request.SerializeToString,
+                response_deserializer=service__pb2.Response.FromString,
+                _registered_method=True)
+        self.getActionStream = channel.stream_stream(
+                '/seedling_rl.Learner/getActionStream',
+                request_serializer=service__pb2.Request.SerializeToString,
+                response_deserializer=service__pb2.Response.FromString,
                 _registered_method=True)
 
 
 class LearnerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def GetActions(self, request, context):
+    def getAction(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def getActionStream(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -53,10 +64,15 @@ class LearnerServicer(object):
 
 def add_LearnerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GetActions': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetActions,
-                    request_deserializer=service__pb2.Observations.FromString,
-                    response_serializer=service__pb2.Actions.SerializeToString,
+            'getAction': grpc.unary_unary_rpc_method_handler(
+                    servicer.getAction,
+                    request_deserializer=service__pb2.Request.FromString,
+                    response_serializer=service__pb2.Response.SerializeToString,
+            ),
+            'getActionStream': grpc.stream_stream_rpc_method_handler(
+                    servicer.getActionStream,
+                    request_deserializer=service__pb2.Request.FromString,
+                    response_serializer=service__pb2.Response.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -70,7 +86,7 @@ class Learner(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def GetActions(request,
+    def getAction(request,
             target,
             options=(),
             channel_credentials=None,
@@ -83,9 +99,36 @@ class Learner(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/seedling_rl.Learner/GetActions',
-            service__pb2.Observations.SerializeToString,
-            service__pb2.Actions.FromString,
+            '/seedling_rl.Learner/getAction',
+            service__pb2.Request.SerializeToString,
+            service__pb2.Response.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getActionStream(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_stream(
+            request_iterator,
+            target,
+            '/seedling_rl.Learner/getActionStream',
+            service__pb2.Request.SerializeToString,
+            service__pb2.Response.FromString,
             options,
             channel_credentials,
             insecure,

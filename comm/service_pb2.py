@@ -24,17 +24,17 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rservice.proto\x12\x0bseedling_rl\"#\n\x0cObservations\x12\x13\n\x0bobservation\x18\x01 \x01(\x0c\"\x1a\n\x07\x41\x63tions\x12\x0f\n\x07\x61\x63tions\x18\x01 \x01(\x0c\x32J\n\x07Learner\x12?\n\nGetActions\x12\x19.seedling_rl.Observations\x1a\x14.seedling_rl.Actions\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rservice.proto\x12\x0bseedling_rl\"\x1e\n\x07Request\x12\x13\n\x0bobservation\x18\x01 \x01(\x0c\"\x1a\n\x08Response\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\x0c\x32\x8b\x01\n\x07Learner\x12:\n\tgetAction\x12\x14.seedling_rl.Request\x1a\x15.seedling_rl.Response\"\x00\x12\x44\n\x0fgetActionStream\x12\x14.seedling_rl.Request\x1a\x15.seedling_rl.Response\"\x00(\x01\x30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'service_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_OBSERVATIONS']._serialized_start=30
-  _globals['_OBSERVATIONS']._serialized_end=65
-  _globals['_ACTIONS']._serialized_start=67
-  _globals['_ACTIONS']._serialized_end=93
-  _globals['_LEARNER']._serialized_start=95
-  _globals['_LEARNER']._serialized_end=169
+  _globals['_REQUEST']._serialized_start=30
+  _globals['_REQUEST']._serialized_end=60
+  _globals['_RESPONSE']._serialized_start=62
+  _globals['_RESPONSE']._serialized_end=88
+  _globals['_LEARNER']._serialized_start=91
+  _globals['_LEARNER']._serialized_end=230
 # @@protoc_insertion_point(module_scope)

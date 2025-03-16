@@ -1,22 +1,35 @@
 import numpy as np
 class ReplayBuffer:
-    def __init__(self,capacity):
+    def __init__(self, capacity, startup:int = None):
         self.buffer=[]
-        self.capacity=capacity
+        self.capacity = capacity
+        self.startup = startup if startup is not None else capacity
         self.current_state={}
+
     def __len__(self):
         return len(self.buffer)
     def len(self):
-        return len(self.buffer)
-    def store(self, observation, action):
+        return self.__len__()
+
+    def __sizeof__(self):
+        return self.capacity
+    def size(self):
+        return self.__len__()
+
+    def ready(self):
+        return self.size() >= self.startup
+
+    def store(self, observation, action, action_prob):
         if observation['step_count']>0:
             if len(self.buffer) == self.capacity:
                 self.buffer.pop(0)
+
+            # TODO : reward design
             self.buffer.append((
-                self.current_state[observation['env_id']][0],
-                self.current_state[observation['env_id']][1],
+                self.current_state[observation['env_id']][0], # observation
+                self.current_state[observation['env_id']][1], # action
                 observation['reward'],
-                observation['observation'],
+                observation['observation'], # next_action
                 observation['terminated'] or observation['truncated'],
             ))
 
