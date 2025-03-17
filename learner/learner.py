@@ -26,30 +26,27 @@ class Learner(LearnerServicer):
     def get_action(self, observation):
         # observation = {
         #     "env_id": env_id,
-        #     "step_count": step_count,
         #     "observation": observation,
         #     "reward": reward,
         #     "terminated": terminated,
         #     "truncated": truncated,
-        #     "info": info
         # }
-        action = None
-        action_prob = None
-        if not observation['terminated'] or observation['truncated']:
-            action, action_prob = self.agent.get_action(observation['observation'])
+        action, action_prob = self.agent.get_action(observation['observation'])
         self.buffer.store(observation, action, action_prob)
-        return [action]
+        return action
 
     def train(self):
         while True:
             if self.buffer.ready():
-                self.agent.train(self.buffer.sample(64))
+                train_step, loss = self.agent.train(self.buffer.sample(64))
+                print("train!!!", train_step, loss.item())
             else:
                 time.sleep(10)
 
     def getAction(self, request, context):
         observation = pickle.loads(request.observation)
-        _action = pickle.dumps(self.get_action(observation))
+        action = self.get_action(observation)
+        _action = pickle.dumps(action)
         return Response(action=_action)
 
     def getActionStream(self, request_iterator, context):

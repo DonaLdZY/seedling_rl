@@ -1,20 +1,16 @@
-import torch
 from torch import nn
-import numpy as np
-
-from ..env_info import n_observation, n_action
 
 class Network(nn.Module):
-    def __init__(self, hidden_size = 64):
+    def __init__(self, input_dim, output_dim):
         super().__init__()
+        hidden_size = 64
         self.net=nn.Sequential(
-            nn.Linear(n_observation, hidden_size),
+            nn.Linear(input_dim, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, n_action)
+            nn.Linear(hidden_size, output_dim),
         )
     def forward(self, x):
-        x = torch.Tensor(np.array(x))
         return self.net(x)
 

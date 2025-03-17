@@ -1,16 +1,17 @@
 import torch
 import torch.optim as optim
 from agent.DQN import DQN
-from actor.CartPole_v1.network.QNet import Network
-from actor.CartPole_v1.env_info import random_move
+from network.qnet_naive import Network
+from envs.cartpole_v1.info import random_move, n_observation, n_action
 from buffer.replay_buffer import ReplayBuffer
 
 from learner.learner import run_learner
 if __name__ == "__main__":
     save_name = "test_test"
-    model = Network()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = Network(n_observation, n_action).to(device)
     agent_args = {
-        'device': torch.device('cpu' if not torch.cuda.is_available() else 'cuda:0'),
+        'device': device,
         'eval_mode': False,
         'optimizer': optim.Adam(
             model.parameters(),
@@ -20,6 +21,6 @@ if __name__ == "__main__":
         'random_move': random_move,
         'save_name': save_name,
     }
-    agent = DQN(Network(), agent_args)
-    buffer = ReplayBuffer(capacity=1024)
+    agent = DQN(model, agent_args)
+    buffer = ReplayBuffer(capacity=1024, startup=128)
     run_learner(agent, buffer)
