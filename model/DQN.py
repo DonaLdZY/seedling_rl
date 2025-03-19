@@ -51,13 +51,13 @@ class DQN:
         if self.train_step % self.sync_target_step == 0:
             self.sync_target()
 
-        observations = data['observation']
-        actions = data['action']
-        rewards = data['reward']
-        next_observations = data['next_observation']
-        terminated = data['terminated']
-        truncated = data['truncated']
-        dones = np.logical_or(terminated, truncated)
+        observations, actions, rewards, next_observations, dones, targets = data
+        observations = np.array(observations)
+        actions = np.array(actions)
+        rewards = np.array(rewards)
+        next_observations = np.array(next_observations)
+        dones = np.array(dones)
+        targets = np.array(targets)
 
         observations = torch.from_numpy(observations).to(self.device)
         next_observations = torch.from_numpy(next_observations).to(self.device)

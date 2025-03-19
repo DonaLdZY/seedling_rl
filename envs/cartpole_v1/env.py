@@ -26,10 +26,10 @@ class Env:
         return self._observation()
 
     def _observation(self):
-        return {
-            "env_id": self.env_id,
-            "observation": self.observation,
-            "reward": self.reward,
-            "terminated": self.terminated,
-            "truncated": self.truncated,
-        }
+        return (
+            self.env_id,
+            self.observation,
+            self.reward,
+            self.terminated,
+            self.truncated,
+        )

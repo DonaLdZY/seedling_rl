@@ -1,11 +1,12 @@
 import torch
 import torch.optim as optim
-from agent.DQN import DQN
+import asyncio
+from model.DQN import DQN
 from network.qnet_naive import Network
 from envs.cartpole_v1.info import random_move, n_observation, n_action
-from buffer.replay_buffer import ReplayBuffer
+from buffer.fifo_buffer import FIFOBuffer
 
-from learner.learner import run_learner
+
 if __name__ == "__main__":
     save_name = "test_test"
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -22,5 +23,13 @@ if __name__ == "__main__":
         'save_name': save_name,
     }
     agent = DQN(model, agent_args)
-    buffer = ReplayBuffer(capacity=1024, startup=128)
+    buffer = FIFOBuffer(capacity=2048, startup=128)
+
+
+    from learner.learner import run_learner
     run_learner(agent, buffer)
+
+
+    # import asyncio
+    # from learner.learner_async import run_learner
+    # asyncio.run(run_learner(model, buffer))
