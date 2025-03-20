@@ -23,8 +23,8 @@ class Actor(threading.Thread):
 
     def request_stream(self):
         while True:
-            _observation = pickle.dumps(self.observation)
             self.obs_ready.wait()
+            _observation = pickle.dumps(self.observation)
             self.obs_ready.clear()
             yield Request(observation=_observation)
 
