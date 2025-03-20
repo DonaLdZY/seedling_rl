@@ -17,8 +17,8 @@ class Env:
         self.env_id = np.random.randint(np.iinfo(np.int32).min, np.iinfo(np.int32).max, size=self.num_envs, dtype=np.int32)
         self.observation, _ = self.env.reset(seed=int(time.time()))
         self.reward = np.zeros(self.num_envs, dtype=np.float32)
-        self.terminated = np.zeros(self.num_envs, dtype=bool)
-        self.truncated = np.zeros(self.num_envs, dtype=bool)
+        self.terminated = np.zeros(self.num_envs, dtype=np.bool_)
+        self.truncated = np.zeros(self.num_envs, dtype=np.bool_)
         return self._observation()
 
     def step(self, action):
