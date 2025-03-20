@@ -30,11 +30,12 @@ class IncompleteTrajectoriesBuffer:
 
             if terminated[i] or truncated[i]:
                 complete_trajectory = self.current_trajectories.pop(env_id)
-                self.process_completed_trajectory(env_id, complete_trajectory)
+                if len(complete_trajectory['observations']) >= 2:
+                    self.process_completed_trajectory(env_id, complete_trajectory)
 
     def process_completed_trajectory(self, env_id, complete_trajectory):
         self.count += 1
-        if self.count % 10 == 0:
-            print(f'>>>> env[ {env_id} ] : {np.sum(np.array(complete_trajectory['rewards']))}')
+        if self.count % 200 == 0:
+            print(f'>>>> env[ {env_id} ] : ',np.sum(np.array(complete_trajectory['rewards'])))
         self.output_queue.put(complete_trajectory)
 

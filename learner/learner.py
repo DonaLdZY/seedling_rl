@@ -59,7 +59,7 @@ class Learner(LearnerServicer):
             if self.buffer.ready():
                 batch = self.buffer.sample(64)
                 train_step, loss = self.model.train(batch)
-                if train_step % 100 == 0:
+                if train_step % 1000 == 0:
                     print(">>> train: ", train_step, " loss: ",loss.item())
             else:
                 time.sleep(10)

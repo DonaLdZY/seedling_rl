@@ -23,10 +23,10 @@ class FIFOBuffer:
         actions = actions[:-1]
         rewards = trajectory['rewards']
         action_probs = trajectory['action_probs']
-        dones = np.zeros(N, dtype=int)
-        dones[-1] = 1
+        dones = np.zeros(N, dtype=np.float32)
+        dones[-1] = 1.0
 
-        targets = np.zeros(N, dtype=float) if self.target_fn is None else self.target_fn(trajectory)
+        targets = np.zeros(N, dtype=np.float32) if self.target_fn is None else self.target_fn(trajectory)
 
         transitions = list(zip(obs, actions, rewards, next_obs, dones, targets))
 

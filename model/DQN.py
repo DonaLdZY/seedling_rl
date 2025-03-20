@@ -6,7 +6,7 @@ class DQN:
     def __init__(self, model, setting:dict):
         # 模型model
         self.eval_model = model
-        self.device = torch.device('cpu' if not torch.cuda.is_available() else 'cuda:0')
+        self.device = setting.get('device', torch.device('cpu'))
         self.eval_model.to(self.device)
         self.eval_mode = setting.get('eval_mode', False)
         if not self.eval_mode:
@@ -52,12 +52,6 @@ class DQN:
             self.sync_target()
 
         observations, actions, rewards, next_observations, dones, targets = data
-        observations = np.array(observations)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_observations = np.array(next_observations)
-        dones = np.array(dones)
-        targets = np.array(targets)
 
         observations = torch.from_numpy(observations).to(self.device)
         next_observations = torch.from_numpy(next_observations).to(self.device)
