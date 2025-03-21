@@ -41,7 +41,7 @@ class Actor(threading.Thread):
         self.count += 1
         now = time.time()
         if now - self.record_time > 5.0:
-            print(self.count / (now - self.record_time))
+            print(f"log | actor | {self.count / (now - self.record_time):.2f}steps/s")
             self.count = 0
             self.record_time = now
 
