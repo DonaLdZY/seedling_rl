@@ -16,27 +16,21 @@ class FIFOBuffer:
     def store(self, trajectory):
 
         obs = trajectory['observations']
-        N = len(obs)-1
+        episode_len = len(obs)-1
         next_obs = obs[1:]
         obs = obs[:-1]
         actions = trajectory['actions']
         actions = actions[:-1]
         rewards = trajectory['rewards']
         action_probs = trajectory['action_probs']
-        dones = np.zeros(N, dtype=np.float32)
+        dones = np.zeros(episode_len, dtype=np.float32)
         dones[-1] = 1.0
 
-        targets = np.zeros(N, dtype=np.float32) if self.target_fn is None else self.target_fn(trajectory)
+        targets = np.zeros(episode_len, dtype=np.float32) if self.target_fn is None else self.target_fn(trajectory)
 
         transitions = list(zip(obs, actions, rewards, next_obs, dones, targets))
 
-        self._insertion_counter += len(transitions)
-        now = time.time()
-        if now - self._last_report_time >= 1:
-            speed = self._insertion_counter / (now - self._last_report_time)
-            print(f"存入速度: {speed:.2f} items/s")
-            self._insertion_counter = 0
-            self._last_report_time = now
+        self.logging(len(transitions))
 
         self.buffer.extend(transitions)
 
@@ -52,3 +46,12 @@ class FIFOBuffer:
                 np.array(targets))
     def ready(self):
         return len(self.buffer) >= self.startup
+
+    def logging(self, count):
+        self._insertion_counter += count
+        now = time.time()
+        if now - self._last_report_time >= 5:
+            speed = self._insertion_counter / (now - self._last_report_time)
+            print(f"log | buffer | 存入速度: {speed:.2f} items/s")
+            self._insertion_counter = 0
+            self._last_report_time = now

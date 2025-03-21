@@ -42,8 +42,6 @@ class DQN:
         self.eval_model.load_state_dict(torch.load(file_name + ".pth", map_location=self.device))
         self.sync_target()
 
-    def sync_target(self):
-        self.target_model.load_state_dict(self.eval_model.state_dict())
 
     def train(self, data):
         if self.eval_mode:
@@ -85,3 +83,5 @@ class DQN:
                 action_value = None
         return action, action_value
 
+    def sync_target(self):
+        self.target_model.load_state_dict(self.eval_model.state_dict())

@@ -1,12 +1,16 @@
 import numpy as np
 from multiprocessing import Manager
 
+import time
+
 class IncompleteTrajectoriesBuffer:
     def __init__(self, output_queue):
         self.manager = Manager()
         self.current_trajectories = {}
-        self.count = 0
         self.output_queue = output_queue
+
+        self.count = 0
+        self.time = time.time()
 
     def store(self, observations, actions, action_probs):
         env_ids, next_obs, rewards, terminated, truncated = observations
@@ -33,8 +37,11 @@ class IncompleteTrajectoriesBuffer:
                 self.process_completed_trajectory(env_id, complete_trajectory)
 
     def process_completed_trajectory(self, env_id, complete_trajectory):
-        self.count += 1
-        if self.count % 200 == 0:
-            print(f'>>>> env[ {env_id} ] : ',np.sum(np.array(complete_trajectory['rewards'])))
+        self.logging(env_id, complete_trajectory)
         self.output_queue.put(complete_trajectory)
 
+    def logging(self, env_id, complete_trajectory):
+        now = time.time()
+        if now - self.time >= 5:
+            print(f'log | action | env[ {env_id} ] : ', np.sum(np.array(complete_trajectory['rewards'])))
+            self.time = now
