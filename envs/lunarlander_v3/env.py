@@ -4,7 +4,7 @@ import time
 class Env:
     def __init__(self, num_envs):
         self.num_envs = num_envs
-        self.env = gym.make_vec('CartPole-v1', num_envs=num_envs)
+        self.env = gym.make_vec('LunarLander-v3', num_envs=num_envs)
 
         self.env_id = None
         self.observation = None
@@ -33,3 +33,17 @@ class Env:
             self.terminated,
             self.truncated,
         )
+
+if __name__ == '__main__':
+    env = Env(1)
+    def random_move():
+        return env.env.action_space.sample()
+    eid, obs, reward, ter, tru = env.get_observation()
+    print(type(eid[0]))
+    print(type(obs[0][0]))
+    print(type(reward[0]))
+    while not ter[0] and not tru[0]:
+        eid, obs, reward, ter, tru = env.step(random_move())
+        print(type(eid[0]))
+        print(type(obs[0][0]))
+        print(type(reward[0]))

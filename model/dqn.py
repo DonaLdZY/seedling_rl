@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch import nn
 import copy
+
 class DQN:
     def __init__(self, model, setting:dict):
         # 模型model
@@ -21,9 +22,9 @@ class DQN:
             self.sync_target_step = setting.get('sync_target_step',100)
             self.gamma = setting.get('gamma', 0.99)
             self.criterion = setting.get('criterion', nn.MSELoss())
-            self.epsilon_max = max(0.0, min(setting.get('epsilon_max',0.08), 1.0))
-            self.epsilon_min = max(0.0, min(setting.get('epsilon_min',0.005), self.epsilon_max))
-            self.epsilon_decay = max(0.0, min(setting.get('epsilon_decay',0.999), 1.0))
+            self.epsilon_max = max(0.0, min(setting.get('epsilon_max',0.8), 1.0))
+            self.epsilon_min = max(0.0, min(setting.get('epsilon_min',0.05), self.epsilon_max))
+            self.epsilon_decay = max(0.0, min(setting.get('epsilon_decay',0.9995), 1.0))
             self.epsilon = self.epsilon_max
 
             # random得在外面定义
@@ -46,21 +47,28 @@ class DQN:
     def train(self, data):
         if self.eval_mode:
             raise KeyError("can not train in eval mode")
+
         if self.train_step % self.sync_target_step == 0:
             self.sync_target()
 
-        observations, actions, rewards, next_observations, dones, targets = data
+        observations, actions, rewards, next_observations, dones = data
 
-        observations = torch.from_numpy(observations).to(self.device)
-        next_observations = torch.from_numpy(next_observations).to(self.device)
-        actions = torch.from_numpy(actions).to(self.device)
-        rewards = torch.from_numpy(rewards).to(self.device)
-        dones = torch.FloatTensor(dones).to(self.device)
+        observations = observations.to(self.device)
+        next_observations = next_observations.to(self.device)
+        actions = actions.to(self.device)
+        rewards = rewards.to(self.device)
+        dones = dones.to(self.device)
 
-        q_eval = self.eval_model(observations).gather(1, actions.unsqueeze(1)).squeeze(1)
+        pred = self.eval_model(observations)
+        q_eval = pred.gather(1, actions.unsqueeze(1)).squeeze(1)
+        # dqn
         q_next = self.target_model(next_observations).max(1)[0]
+        # double-dqn
+        # next_actions = self.eval_model(next_observations).argmax(dim=1, keepdim=True)
+        # q_next = self.target_model(next_observations).gather(1, next_actions).squeeze(1)
+
         q_target = rewards + self.gamma * q_next * (1 - dones)
-        loss = self.criterion(q_eval, q_target)
+        loss = self.criterion(q_eval, q_target.detach())
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -69,7 +77,7 @@ class DQN:
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
         if self.train_step % self.sync_target_step == 0:
             self.save_model(self.save_name)
-        return self.train_step, loss
+        return self.train_step, loss.detach().numpy()
 
     def get_action(self, observation, evaluate=False):
         batch_size = observation.shape[0]
@@ -80,8 +88,7 @@ class DQN:
                 action = torch.argmax(action_value, dim=-1).cpu().numpy()
             else :
                 action = np.array([self.random_move() for _ in range(batch_size)])
-                action_value = None
-        return action, action_value
+        return action, None
 
     def sync_target(self):
         self.target_model.load_state_dict(self.eval_model.state_dict())

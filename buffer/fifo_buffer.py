@@ -13,37 +13,15 @@ class FIFOBuffer:
         self.buffer = deque(maxlen=capacity)
         self.target_fn = target_fn
 
-    def store(self, trajectory):
-
-        obs = trajectory['observations']
-        episode_len = len(obs)-1
-        next_obs = obs[1:]
-        obs = obs[:-1]
-        actions = trajectory['actions']
-        actions = actions[:-1]
-        rewards = trajectory['rewards']
-        action_probs = trajectory['action_probs']
-        dones = np.zeros(episode_len, dtype=np.float32)
-        dones[-1] = 1.0
-
-        targets = np.zeros(episode_len, dtype=np.float32) if self.target_fn is None else self.target_fn(trajectory)
-
-        transitions = list(zip(obs, actions, rewards, next_obs, dones, targets))
-
-        self.logging(len(transitions))
-
-        self.buffer.extend(transitions)
+    def store(self, data):
+        self.logging(len(data))
+        self.buffer.extend(data)
 
     def sample(self, batch_size):
         index = np.random.choice(len(self.buffer), batch_size, replace=False)
         batch = [self.buffer[i] for i in index]
-        observations, actions, rewards, next_observations, dones, targets = zip(*batch)
-        return (np.array(observations),
-                np.array(actions),
-                np.array(rewards),
-                np.array(next_observations),
-                np.array(dones),
-                np.array(targets))
+        return zip(*batch)
+
     def ready(self):
         return len(self.buffer) >= self.startup
 
