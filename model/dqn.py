@@ -66,7 +66,6 @@ class DQN:
         # double-dqn
         # next_actions = self.eval_model(next_observations).argmax(dim=1, keepdim=True)
         # q_next = self.target_model(next_observations).gather(1, next_actions).squeeze(1)
-
         q_target = rewards + self.gamma * q_next * (1 - dones)
         loss = self.criterion(q_eval, q_target.detach())
         self.optimizer.zero_grad()
