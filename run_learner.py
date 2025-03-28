@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 from buffer.fifo_buffer import FIFOBuffer as Buffer
 from envs.cartpole_v1.info import random_move, n_observation, n_action
-from model.dqn import DQN
+from agent.dqn import DQN
 from network.qnet_dueling import QNetDueling
 from trajectory_process.transitions import get_trajectory_process
 

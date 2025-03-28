@@ -6,7 +6,7 @@ from buffer.fifo_buffer import FIFOBuffer as Buffer
 from envs.lunarlander_v3.info import random_move, n_observation, n_action
 # from envs.cartpole_v1.info import random_move, n_observation, n_action
 
-from model.sac import SAC
+from agent.sac import SAC
 from network.actor_net import ActorNet as ActorNetwork
 from network.qnet import QNet as CriticNetwork
 from trajectory_process.transitions import get_trajectory_process

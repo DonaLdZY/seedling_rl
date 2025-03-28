@@ -6,7 +6,7 @@ from buffer.fifo_buffer import FIFOBuffer as Buffer
 from envs.lunarlander_v3.info import random_move, n_observation, n_action
 # from envs.cartpole_v1.info import random_move, n_observation, n_action
 
-from model.a2c import A2C
+from agent.a2c import A2C
 from network.actor_net import ActorNet as ActorNetwork
 from network.critic_net import CriticNet as CriticNetwork
 from trajectory_process.transitions import get_trajectory_process
@@ -42,4 +42,4 @@ if __name__ == "__main__":
 
     # import asyncio
     # from learner.learner_async import run_learner
-    # asyncio.run(run_learner(model, buffer))
+    # asyncio.run(run_learner(agent, buffer))
