@@ -1,42 +1,42 @@
 import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
+from utils.create_optimizer import create_optimizer
 from torch import optim
 import numpy as np
 import copy
 
 class SAC:
-    def __init__(self, actor, critic1, critic2, setting: dict):
-        self.device = setting.get('device', torch.device('cpu'))
-        self.eval_mode = setting.get('eval_mode', False)
+    def __init__(self, actor, critic1, critic2, **kwargs):
+        self.device = kwargs.get('device', torch.device('cpu'))
+        if isinstance(self.device, str):
+            self.device = torch.device(self.device)
         self.actor = actor.to(self.device)
         self.critic1 = critic1.to(self.device)
         self.critic2 = critic2.to(self.device)
-
-        # 保存及训练步数相关
-        if not self.eval_mode:
-            self.train_step = 0
-            self.save_name = setting.get('save_name', 'SAC')
-            self.save_step = setting.get('save_step', 1000)
-
-        self.gamma = setting.get('gamma', 0.99)
-        self.tau = setting.get('tau', 0.005)
+        try:
+            self.actor_optimizer = create_optimizer(self.actor.parameters(), kwargs['actor_optimizer'],
+                                                    **kwargs.get('actor_optimizer_args', {}))
+            self.critic_1_optimizer = create_optimizer(self.critic1.parameters(), kwargs['critic_1_optimizer'],
+                                                    **kwargs.get('critic_1_optimizer_args', {}))
+            self.critic_2_optimizer = create_optimizer(self.critic2.parameters(), kwargs['critic_2_optimizer'],
+                                                    **kwargs.get('critic_2_optimizer_args', {}))
+        except KeyError:
+            raise KeyError('actor_optimizer, critic_1_optimizer, critic_2_optimizer are required')
+        self.train_step = 0
+        self.save_name = kwargs.get('save_name', 'SAC')
+        self.save_step = kwargs.get('save_step', 1000)
+        self.gamma = kwargs.get('gamma', 0.99)
+        self.tau = kwargs.get('tau', 0.005)
 
         # 温度参数，用于控制熵奖励，若设置自动调节，则需要优化 log_alpha
-        self.target_entropy = setting.get('target_entropy', -1.0)  # 一般设为 -|A|
+        self.target_entropy = kwargs.get('target_entropy', -1.0)  # 一般设为 -|A|
         # 初始化一个标量参数，取指数即为温度 alpha
-        self.log_alpha = torch.tensor(np.log(setting.get('alpha', 1)),
+        self.log_alpha = torch.tensor(np.log(kwargs.get('alpha', 1)),
                                       dtype=torch.float32, requires_grad=True, device=self.device)
-        self.alpha_lr = setting.get('alpha_lr', 1e-4 )
+        self.alpha_lr = kwargs.get('alpha_lr', 1e-4)
         self.alpha_optimizer = optim.Adam([self.log_alpha], lr=self.alpha_lr)
         self.alpha = self.log_alpha.exp()
-        # 优化器
-        try:
-            self.actor_optimizer = setting['actor_optimizer']
-            self.critic_1_optimizer = setting['critic_1_optimizer']
-            self.critic_2_optimizer = setting['critic_2_optimizer']
-        except KeyError:
-            raise KeyError('actor_optimizer, critic_1_optimizer, critic_2_optimizer  必须提供')
 
         # 构造 target critic 网络，初始时直接复制 critic 参数
         self.critic1_target = copy.deepcopy(critic1)
@@ -60,14 +60,13 @@ class SAC:
         checkpoint = torch.load(file_name + ".pth", map_location=self.device)
         self.actor.load_state_dict(checkpoint['actor'])
         self.critic1.load_state_dict(checkpoint['critic1'])
+        self.critic1_target.load_state_dict(self.critic1.state_dict())
         self.critic2.load_state_dict(checkpoint['critic2'])
+        self.critic2_target.load_state_dict(self.critic2.state_dict())
         self.log_alpha = checkpoint['log_alpha']
         self.alpha = self.log_alpha.exp()
 
     def train(self, data):
-        if self.eval_mode:
-            raise KeyError("不能在 eval 模式下训练")
-
         observations, actions, rewards, next_obs, dones = data
         observations = observations.to(self.device)
         actions = actions.to(self.device)
@@ -128,12 +127,17 @@ class SAC:
         if self.train_step % self.save_step == 0:
             self.save_model(self.save_name)
 
-        return self.train_step, (actor_loss.item(), critic_1_loss.item(), critic_2_loss.item())
+        td_error1 = (target_q - current_q1).detach().abs().cpu().numpy()
+        td_error2 = (target_q - current_q2).detach().abs().cpu().numpy()
+        td_errors = np.maximum(td_error1, td_error2)
+
+        return (self.train_step,
+                (actor_loss.item(), critic_1_loss.item(), critic_2_loss.item()),
+                td_errors)
 
     def _soft_update(self, source, target):
         for param, target_param in zip(source.parameters(), target.parameters()):
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
-
 
     def get_action(self, observation, evaluate=False):
         with torch.no_grad():

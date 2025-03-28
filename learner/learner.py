@@ -147,7 +147,7 @@ class Learner(LearnerServicer):
         while True:
             if self.buffer.ready():
                 batch = self.buffer.sample(self.train_batch_size)
-                train_step, loss = self.model.train(batch)
+                train_step, loss, td_error = self.model.train(batch)
                 self.train_throughput_logger.log(train_step)
             else:
                 time.sleep(10)

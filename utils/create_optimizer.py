@@ -17,7 +17,9 @@ optim_map = {
     'sgd': torch.optim.SGD,
 }
 
-def create_optimizer(model_params,optimizer_name,  **kwargs):
+def create_optimizer(model_params, optimizer_name, **kwargs):
+    if isinstance(optimizer_name, torch.optim.Optimizer):
+        return optimizer_name
     # 转换为小写并获取优化器类
     optimizer_name = optimizer_name.lower()
     optimizer_class = optim_map.get(optimizer_name)

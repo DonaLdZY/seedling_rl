@@ -3,6 +3,8 @@ from torch import nn
 class QNetDueling(nn.Module):
     def __init__(self, input_dim, output_dim, hidden_num = 2, hidden_size=128):
         super().__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
         layers = [nn.Linear(input_dim, hidden_size), nn.ReLU()]
         for _ in range(hidden_num - 1):
             layers.append(nn.Linear(hidden_size, hidden_size))  # 创建新实例
