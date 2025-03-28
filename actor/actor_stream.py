@@ -3,7 +3,8 @@ import threading
 import pickle
 from comm.service_pb2_grpc import LearnerStub
 from comm.service_pb2 import Request, Response
-import time
+
+from utils.logger import SpeedLogger
 
 class Actor(threading.Thread):
     def __init__(self, env, host, port):
@@ -18,8 +19,7 @@ class Actor(threading.Thread):
         self.obs_ready = threading.Event()
         self.obs_ready.set()
 
-        self.count = 0
-        self.record_time = time.time()
+        self.logger = SpeedLogger("Actor |", "steps/s")
 
     def request_stream(self):
         while True:
@@ -35,13 +35,6 @@ class Actor(threading.Thread):
                 action = pickle.loads(response.action)
                 self.observation = self.env.step(action)
                 self.obs_ready.set()
-                self.logging()
+                self.logger.log()
 
-    def logging(self):
-        self.count += 1
-        now = time.time()
-        if now - self.record_time > 5.0:
-            print(f"log | actor | {self.count / (now - self.record_time):.2f}steps/s")
-            self.count = 0
-            self.record_time = now
 

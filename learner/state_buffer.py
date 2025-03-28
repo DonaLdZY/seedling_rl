@@ -1,17 +1,11 @@
-import numpy as np
 from multiprocessing import Manager
-
-import time
-
-class IncompleteTrajectoriesBuffer:
+from utils.logger import AverageLogger
+class StateBuffer:
     def __init__(self, output_queue):
         self.manager = Manager()
         self.current_trajectories = {}
         self.output_queue = output_queue
-
-        self.count = 0
-        self.score = []
-        self.time = time.time()
+        self.score_logger = AverageLogger("Score |","")
 
     def store(self, observations, actions, extra_dist):
         if extra_dist is None:
@@ -38,15 +32,16 @@ class IncompleteTrajectoriesBuffer:
             if terminated[i] or truncated[i]:
                 complete_trajectory = self.current_trajectories.pop(env_id)
                 self.process_completed_trajectory(env_id, complete_trajectory)
+    def get(self, env_id):
+        if env_id not in self.current_trajectories.keys():
+            return {
+                    'observations': [],
+                    'actions': [],
+                    'rewards': [],
+                }
+        else:
+            return self.current_trajectories[env_id]
 
     def process_completed_trajectory(self, env_id, complete_trajectory):
-        self.logging(env_id, complete_trajectory)
         self.output_queue.put(complete_trajectory)
-
-    def logging(self, env_id, complete_trajectory):
-        self.score.append(np.sum(np.array(complete_trajectory['rewards'])))
-        now = time.time()
-        if now - self.time >= 1:
-            print(f'log | average score | : ', np.mean(np.array(self.score)))
-            self.time = now
-            self.score = []
+        self.score_logger.log(sum(complete_trajectory['rewards']))

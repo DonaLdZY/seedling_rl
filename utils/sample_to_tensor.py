@@ -1,16 +1,11 @@
 import numpy as np
 import torch
-def sample_process(data):
+def sample_to_tensor(data):
     observations, actions, rewards, next_observations, dones = data
 
     observations = np.array(observations)
     actions = np.array(actions)
-
     rewards = np.array(rewards)
-    reward_mean = np.mean(rewards)
-    reward_std = np.std(rewards)
-    rewards = (rewards - reward_mean) / (reward_std + 1e-9)
-
     next_observations = np.array(next_observations)
     dones = np.array(dones)
 

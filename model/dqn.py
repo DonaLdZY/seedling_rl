@@ -76,7 +76,7 @@ class DQN:
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
         if self.train_step % self.sync_target_step == 0:
             self.save_model(self.save_name)
-        return self.train_step, loss.detach().numpy()
+        return self.train_step, loss.detach().cpu().numpy()
 
     def get_action(self, observation, evaluate=False):
         batch_size = observation.shape[0]

@@ -4,7 +4,7 @@ import pickle
 from comm.service_pb2_grpc import LearnerStub
 from comm.service_pb2 import Request, Response
 
-import time
+from utils.logger import SpeedLogger
 
 class Actor(threading.Thread):
     def __init__(self, env, host, port):
@@ -16,8 +16,7 @@ class Actor(threading.Thread):
         channel = grpc.insecure_channel(self.host, options=[('grpc.enable_http_proxy', 0)])  # 禁用代理
         self.stub = LearnerStub(channel)
 
-        self.count = 0
-        self.record_time = time.time()
+        self.logger = SpeedLogger("Actor |", "steps/s")
 
     def run(self):
         while True:
@@ -25,12 +24,5 @@ class Actor(threading.Thread):
             response = self.stub.getAction(Request(observation=_observation))
             action = pickle.loads(response.action)
             self.observation = self.env.step(action)
-            self.logging()
+            self.logger.log()
 
-    def logging(self):
-        self.count += 1
-        now = time.time()
-        if now - self.record_time > 5.0:
-            print(f"log | actor | {self.count / (now - self.record_time):.2f}steps/s")
-            self.count = 0
-            self.record_time = now

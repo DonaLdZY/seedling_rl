@@ -47,7 +47,7 @@ class PolicyGradient:
         self.train_step+=1
         if self.train_step % self.save_step == 0:
             self.save_model(self.save_name)
-        return self.train_step, loss.detach().numpy()
+        return self.train_step, loss.detach().cpu().numpy()
 
     def get_action(self, observation, evaluate=False):
         with torch.no_grad():

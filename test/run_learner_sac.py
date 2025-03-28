@@ -1,6 +1,5 @@
 import torch
 import torch.optim as optim
-import asyncio
 
 from buffer.fifo_buffer import FIFOBuffer as Buffer
 
@@ -8,10 +7,10 @@ from envs.lunarlander_v3.info import random_move, n_observation, n_action
 # from envs.cartpole_v1.info import random_move, n_observation, n_action
 
 from model.sac import SAC
-from network.actor_net import Network as ActorNetwork
-from network.qnet import Network as CriticNetwork
+from network.actor_net import ActorNet as ActorNetwork
+from network.qnet import QNet as CriticNetwork
 from trajectory_process.transitions import get_trajectory_process
-from sample_process.default import sample_process
+from utils.sample_to_tensor import sample_to_tensor
 
 if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -42,5 +41,5 @@ if __name__ == "__main__":
     buffer = Buffer(capacity=32768, startup=512)
     from learner.learner import Learner, run_learner
 
-    learner = Learner(agent, buffer, get_trajectory_process(), sample_process, 256)
+    learner = Learner(agent, buffer, get_trajectory_process(), sample_to_tensor, 256)
     run_learner(learner)
