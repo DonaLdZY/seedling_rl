@@ -4,32 +4,37 @@ from torch import nn
 import copy
 
 class DQN:
-    def __init__(self, model, setting:dict):
-        # 模型model
+    def __init__(self, model, **kwargs):
+        self.device = kwargs.get('device', torch.device('cpu'))
+        if isinstance(self.device, str):
+            self.device = torch.device(self.device)
+
         self.eval_model = model
-        self.device = setting.get('device', torch.device('cpu'))
         self.eval_model.to(self.device)
-        self.eval_mode = setting.get('eval_mode', False)
+        self.eval_mode = kwargs.get('eval_mode', False)
         if not self.eval_mode:
             self.train_step = 0
-            self.save_name = setting.get('save_name', 'DQN')
-            if 'optimizer' in setting:
-                self.optimizer = setting['optimizer']
+            self.save_name = kwargs.get('save_name', 'DQN')
+            if 'optimizer' in kwargs:
+                self.optimizer = kwargs['optimizer']
+                if isinstance(self.optimizer, str):
+                    from utils.create_optimizer import create_optimizer
+                    self.optimizer = create_optimizer(self.eval_model.parameters(), self.optimizer, **kwargs)
             else:
                 raise KeyError('optimizer is required')
 
             self.target_model = copy.deepcopy(model)
-            self.sync_target_step = setting.get('sync_target_step',100)
-            self.gamma = setting.get('gamma', 0.99)
-            self.criterion = setting.get('criterion', nn.MSELoss())
-            self.epsilon_max = max(0.0, min(setting.get('epsilon_max',0.8), 1.0))
-            self.epsilon_min = max(0.0, min(setting.get('epsilon_min',0.05), self.epsilon_max))
-            self.epsilon_decay = max(0.0, min(setting.get('epsilon_decay',0.9995), 1.0))
+            self.sync_target_step = kwargs.get('sync_target_step', 100)
+            self.gamma = kwargs.get('gamma', 0.99)
+            self.criterion = kwargs.get('criterion', nn.MSELoss())
+            self.epsilon_max = max(0.0, min(kwargs.get('epsilon_max', 0.8), 1.0))
+            self.epsilon_min = max(0.0, min(kwargs.get('epsilon_min', 0.05), self.epsilon_max))
+            self.epsilon_decay = max(0.0, min(kwargs.get('epsilon_decay', 0.9995), 1.0))
             self.epsilon = self.epsilon_max
 
             # random得在外面定义
-            if "random_move" in setting:
-                self.random_move = setting['random_move']
+            if "random_move" in kwargs:
+                self.random_move = kwargs['random_move']
             else:
                 if self.epsilon_max > 0.0:
                     raise KeyError("random_move() is required")
