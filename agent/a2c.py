@@ -36,7 +36,7 @@ class A2C:
         self.critic.load_state_dict(checkpoint['critic'])
 
 
-    def train(self, data):
+    def train(self, data, weights=None):
         observations, actions, rewards, next_observations, dones = data
         observations = observations.to(self.device)
         next_observations = next_observations.to(self.device)
@@ -61,6 +61,9 @@ class A2C:
         actor_loss.backward()
         self.actor_optimizer.step()
 
+        if weights is not None:
+            weights = weights.to(self.device)
+            critic_loss = (weights * critic_loss).mean()
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
@@ -69,7 +72,7 @@ class A2C:
         if self.train_step % self.save_step == 0:
             self.save_model(self.save_name)
 
-        td_errors = advantages
+        td_errors = advantages.detach().cpu().numpy()
 
         return (self.train_step,
                 (actor_loss.detach().cpu().numpy(), critic_loss.detach().cpu().numpy()),

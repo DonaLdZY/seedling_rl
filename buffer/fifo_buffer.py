@@ -1,10 +1,8 @@
 import numpy as np
 import random
-
-from utils.logger import SpeedLogger
 from utils.sample_to_tensor import sample_to_tensor
 class FIFOBuffer:
-    def __init__(self, capacity, max_usage = -1, startup = None):
+    def __init__(self, capacity, max_usage = 64, startup = None):
         self.capacity = capacity
         self.max_usage = max_usage
         self.startup = startup if startup is not None else capacity
@@ -39,11 +37,15 @@ class FIFOBuffer:
                 # 如果使用次数达到上限，则从有效索引集合中移除
                 if self.usage[idx] >= self.max_usage:
                     self.valid_indices.remove(idx)
-        return sample_to_tensor(zip(*samples))
+        return sample_to_tensor(zip(*samples)), None
+
+    def update_priorities(self, td_errors):
+        pass
 
     def ready(self):
         return len(self.valid_indices) >= self.startup
-
+    def full(self):
+        return len(self.valid_indices) >= self.capacity
 
 if __name__ == "__main__":
     # test

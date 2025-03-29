@@ -26,7 +26,7 @@ class PolicyGradient:
         self.network.load_state_dict(torch.load(file_name + ".pth", map_location=self.device))
 
 
-    def train(self, data):
+    def train(self, data, weights=None):
         observations, actions, rewards, next_observations, dones = data
         observations = observations.to(self.device)
         next_observations = next_observations.to(self.device)

@@ -13,7 +13,7 @@ import numpy as np
 import torch
 
 from utils.logger import SpeedLogger, CycleInfoLogger, IncreasingSpeedLogger
-
+from learner.redis_buffer import RedisBufferManager
 class Learner(LearnerServicer):
     def __init__(self, model, buffer,
                  trajectory_process,
@@ -37,11 +37,23 @@ class Learner(LearnerServicer):
             self.pred_expect_batch_size = self.pred_batch_size
             self.pred_last_batch_size = [1]
             self.batch_thread = threading.Thread(target=self._batching_thread, daemon=True)
-
         # training/data preparing threads
         self.training_thread = threading.Thread(target=self._training_thread, daemon=True)
         self.data_preparing_thread = threading.Thread(target=self._data_preparing_thread, daemon=True)
 
+        self.use_redis = kwargs.get('use_redis', False)
+        if self.use_redis:
+            redis_host = kwargs.get('redis_host', 'localhost')
+            redis_port = kwargs.get('redis_port', 6379)
+            redis_db = kwargs.get('redis_db', 0)
+            redis_max_memory = kwargs.get('redis_max_memory', 2048)
+            self.redis_mgr = RedisBufferManager(
+                host=redis_host,
+                port=redis_port,
+                db=redis_db,
+                max_memory=redis_max_memory
+            )
+            self.data_prefetching_thread = threading.Thread(target=self._data_prefetching_threads, daemon=True)
 
         # log
         self.pred_throughput_logger = SpeedLogger("predicting speed |", "actions/s")
@@ -139,15 +151,30 @@ class Learner(LearnerServicer):
         print("data preparing thread start...")
         while True:
             complete_trajectory = self.complete_queue.get()
-            data_store = self.trajectory_process(complete_trajectory)
-            self.buffer.store(data_store)
+            if self.use_redis and not self.buffer.full():
+                self.redis_mgr.store_trajectory(complete_trajectory)
+            else:
+                data_store = self.trajectory_process(complete_trajectory)
+                self.buffer.store(data_store)
+
+    def _data_prefetching_threads(self):
+        print("data prefetching thread start...")
+        while True:
+            if not self.buffer.full():
+                batch_data = self.redis_mgr.retrieve_trajectories(batch_size=1)  # 根据GPU内存调整
+                for data in batch_data:
+                    data_store = self.trajectory_process(data)
+                    self.buffer.store(data_store)
+            else:
+                time.sleep(10)
 
     def _training_thread(self):
         print("training thread start...")
         while True:
             if self.buffer.ready():
-                batch = self.buffer.sample(self.train_batch_size)
-                train_step, loss, td_error = self.model.train(batch)
+                batch, weights = self.buffer.sample(self.train_batch_size)
+                train_step, loss, td_error = self.model.train(batch, weights)
+                self.buffer.update_priorities(td_error)
                 self.train_throughput_logger.log(train_step)
             else:
                 time.sleep(10)
@@ -170,6 +197,8 @@ class Learner(LearnerServicer):
         self.data_preparing_thread.start()
         if self.pred_batching:
             self.batch_thread.start()
+        if self.use_redis:
+            self.data_prefetching_thread.start()
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
         add_LearnerServicer_to_server(self, server)
         server.add_insecure_port('[::]:' + str(port))

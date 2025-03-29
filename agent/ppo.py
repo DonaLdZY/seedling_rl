@@ -35,7 +35,7 @@ class PPO:
         self.actor.load_state_dict(checkpoint['actor'])
         self.critic.load_state_dict(checkpoint['critic'])
 
-    def train(self, data):
+    def train(self, data, weights=None):
         observations, actions, old_log_probs, returns, advantages = data
         observations = observations.to(self.device)
         actions = actions.to(self.device)
@@ -59,6 +59,10 @@ class PPO:
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
+
+        if weights is not None:
+            weights = weights.to(self.device)
+            critic_loss = (weights * critic_loss).mean()
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()

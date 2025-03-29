@@ -39,7 +39,7 @@ class DQN:
         self.sync_target()
 
 
-    def train(self, data):
+    def train(self, data, weights=None):
         observations, actions, rewards, next_observations, dones = data
         observations = observations.to(self.device)
         next_observations = next_observations.to(self.device)
@@ -60,6 +60,9 @@ class DQN:
         q_target = rewards + self.gamma * q_next * (1 - dones)
         loss = F.mse_loss(q_eval, q_target.detach())
 
+        if weights is not None:
+            weights = weights.to(self.device)
+            loss = (weights * loss).mean()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()

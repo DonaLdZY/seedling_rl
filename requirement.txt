@@ -3,3 +3,4 @@ gymnasium
 grpcio
 grpcio-tools
 numpy==1.23.5
+redis

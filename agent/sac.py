@@ -66,7 +66,7 @@ class SAC:
         self.log_alpha = checkpoint['log_alpha']
         self.alpha = self.log_alpha.exp()
 
-    def train(self, data):
+    def train(self, data, weights=None):
         observations, actions, rewards, next_obs, dones = data
         observations = observations.to(self.device)
         actions = actions.to(self.device)

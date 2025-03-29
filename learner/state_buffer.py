@@ -32,6 +32,7 @@ class StateBuffer:
             if terminated[i] or truncated[i]:
                 complete_trajectory = self.current_trajectories.pop(env_id)
                 self.process_completed_trajectory(env_id, complete_trajectory)
+
     def get(self, env_id):
         if env_id not in self.current_trajectories.keys():
             return {
