@@ -10,8 +10,7 @@ class PolicyGradient:
 
         self.network = network.to(self.device)
         try:
-            self.optimizer = create_optimizer(self.network.parameters(), kwargs['optimizer'],
-                                              **kwargs.get('optimizer_args', {}))
+            self.optimizer = create_optimizer(self.network.parameters(), kwargs['optimizer'])
         except KeyError:
             raise KeyError('optimizer is required')
         self.train_step = 0
@@ -42,6 +41,9 @@ class PolicyGradient:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        if self.scheduler is not None:
+            self.scheduler.step()
 
         self.train_step+=1
         if self.train_step % self.save_step == 0:

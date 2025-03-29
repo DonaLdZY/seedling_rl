@@ -3,6 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
 from utils.create_optimizer import create_optimizer
+from utils.create_scheduler import create_scheduler
 
 class PPO:
     def __init__(self, actor, critic, **kwargs):
@@ -13,12 +14,14 @@ class PPO:
         self.actor = actor.to(self.device)
         self.critic = critic.to(self.device)
         try:
-            self.actor_optimizer = create_optimizer(self.actor.parameters(), kwargs['actor_optimizer'],
-                                                    **kwargs.get('actor_optimizer_args', {}))
-            self.critic_optimizer = create_optimizer(self.critic.parameters(), kwargs['critic_optimizer'],
-                                                     **kwargs.get('critic_optimizer_args', {}))
+            self.actor_optimizer = create_optimizer(self.actor.parameters(), kwargs['actor_optimizer'])
+            self.critic_optimizer = create_optimizer(self.critic.parameters(), kwargs['critic_optimizer'])
         except KeyError:
             raise KeyError('Both actor_optimizer and critic_optimizer are required')
+        self.actor_scheduler = create_scheduler(self.actor_optimizer,
+                                                kwargs['actor_scheduler']) if 'actor_scheduler' in kwargs else None
+        self.critic_scheduler = create_scheduler(self.critic_optimizer,
+                                                 kwargs['critic_scheduler']) if 'critic_scheduler' in kwargs else None
         self.train_step = 0
         self.save_name = kwargs.get('save_name', 'PPO')
         self.save_step = kwargs.get('save_step', 1000)
@@ -67,6 +70,11 @@ class PPO:
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
+
+        if self.actor_scheduler is not None:
+            self.actor_scheduler.step()
+        if self.critic_scheduler is not None:
+            self.critic_scheduler.step()
 
         self.train_step += 1
         if self.train_step % self.save_step == 0:

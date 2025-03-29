@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from utils.create_optimizer import create_optimizer
+from utils.create_scheduler import create_scheduler
 import copy
 import random
 
@@ -13,10 +14,11 @@ class DQN:
 
         self.network = network.to(self.device)
         try:
-            self.optimizer = create_optimizer(self.network.parameters(), kwargs['optimizer'],
-                                              **kwargs.get('optimizer_args', {}))
+            self.optimizer = create_optimizer(self.network.parameters(), kwargs['optimizer'])
         except KeyError:
             raise KeyError('optimizer is required')
+        self.scheduler = create_scheduler(self.optimizer, kwargs['scheduler']) if 'scheduler' in kwargs else None
+
         self.train_step = 0
         self.save_name = kwargs.get('save_name', 'DQN')
         self.save_step = kwargs.get('save_step', 1000)
@@ -66,6 +68,9 @@ class DQN:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        if self.scheduler is not None:
+            self.scheduler.step()
 
         self.train_step+=1
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)

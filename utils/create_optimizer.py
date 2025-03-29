@@ -17,11 +17,11 @@ optim_map = {
     'sgd': torch.optim.SGD,
 }
 
-def create_optimizer(model_params, optimizer_name, **kwargs):
-    if isinstance(optimizer_name, torch.optim.Optimizer):
-        return optimizer_name
+def create_optimizer(model_params, optimizer):
+    if isinstance(optimizer, torch.optim.Optimizer):
+        return optimizer
     # 转换为小写并获取优化器类
-    optimizer_name = optimizer_name.lower()
+    optimizer_name = optimizer['type'].lower()
     optimizer_class = optim_map.get(optimizer_name)
     if not optimizer_class:
         raise ValueError(f"Unsupported optimizer: {optimizer_name}. "
@@ -30,5 +30,5 @@ def create_optimizer(model_params, optimizer_name, **kwargs):
     signature = inspect.signature(optimizer_class.__init__)
     valid_params = list(signature.parameters.keys())[1:]  # 跳过self
     # 过滤无效参数
-    filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
+    filtered_kwargs = {k: v for k, v in optimizer['params'].items() if k in valid_params}
     return optimizer_class(model_params, **filtered_kwargs)

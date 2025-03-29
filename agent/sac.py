@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 from utils.create_optimizer import create_optimizer
+from utils.create_scheduler import create_scheduler
 from torch import optim
 import numpy as np
 import copy
@@ -15,14 +16,18 @@ class SAC:
         self.critic1 = critic1.to(self.device)
         self.critic2 = critic2.to(self.device)
         try:
-            self.actor_optimizer = create_optimizer(self.actor.parameters(), kwargs['actor_optimizer'],
-                                                    **kwargs.get('actor_optimizer_args', {}))
-            self.critic_1_optimizer = create_optimizer(self.critic1.parameters(), kwargs['critic_1_optimizer'],
-                                                    **kwargs.get('critic_1_optimizer_args', {}))
-            self.critic_2_optimizer = create_optimizer(self.critic2.parameters(), kwargs['critic_2_optimizer'],
-                                                    **kwargs.get('critic_2_optimizer_args', {}))
+            self.actor_optimizer = create_optimizer(self.actor.parameters(), kwargs['actor_optimizer'])
+            self.critic_1_optimizer = create_optimizer(self.critic1.parameters(), kwargs['critic_1_optimizer'])
+            self.critic_2_optimizer = create_optimizer(self.critic2.parameters(), kwargs['critic_2_optimizer'])
         except KeyError:
             raise KeyError('actor_optimizer, critic_1_optimizer, critic_2_optimizer are required')
+        self.actor_scheduler = create_scheduler(self.actor_optimizer,
+                                                kwargs['actor_scheduler']) if 'actor_scheduler' in kwargs else None
+        self.critic_1_scheduler = create_scheduler(self.critic_1_optimizer,
+                                                   kwargs['critic_1_scheduler']) if 'critic_1_scheduler' in kwargs else None
+        self.critic_2_scheduler = create_scheduler(self.critic_2_optimizer,
+                                                   kwargs['critic_2_scheduler']) if 'critic_2_scheduler' in kwargs else None
+
         self.train_step = 0
         self.save_name = kwargs.get('save_name', 'SAC')
         self.save_step = kwargs.get('save_step', 1000)
@@ -122,6 +127,13 @@ class SAC:
         # 软更新 target critic 网络参数
         self._soft_update(self.critic1, self.critic1_target)
         self._soft_update(self.critic2, self.critic2_target)
+
+        if self.actor_scheduler is not None:
+            self.actor_scheduler.step()
+        if self.critic_1_scheduler is not None:
+            self.critic_1_scheduler.step()
+        if self.critic_2_scheduler is not None:
+            self.critic_2_scheduler.step()
 
         self.train_step += 1
         if self.train_step % self.save_step == 0:

@@ -12,9 +12,11 @@ if __name__ == "__main__":
     network = QNetDueling(n_observation, n_action, 3, 128).to(device)
     agent_args = {
         'device': "cuda:0" if torch.cuda.is_available() else "cpu",
-        'optimizer': "adam",
-        'optimizer_args' :{
-            'lr':0.001
+        'optimizer': {
+            "type": "Adam",
+            'params' :{
+                'lr':0.001
+            }
         },
         'save_name': "test",
         'epsilon_max': 0.08,
