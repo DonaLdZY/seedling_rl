@@ -116,7 +116,7 @@ class PrioritizedReplayBuffer:
 
         self.beta = min(1.0, self.beta + self.beta_increment)
 
-        return sample_to_tensor(zip(*[self.buffer[idx] for idx in indices])), torch.tensor(weights, dtype=torch.float32)
+        return zip(*[self.buffer[idx] for idx in indices]), torch.tensor(weights, dtype=torch.float32)
 
     def update_priorities(self, td_errors):
         """带有效性检查的优先级更新"""

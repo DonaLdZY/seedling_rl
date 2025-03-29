@@ -73,11 +73,6 @@ class SAC:
 
     def train(self, data, weights=None):
         observations, actions, rewards, next_obs, dones = data
-        observations = observations.to(self.device)
-        actions = actions.to(self.device)
-        rewards = rewards.to(self.device)
-        next_obs = next_obs.to(self.device)
-        dones = dones.to(self.device)
 
         # 计算 target Q 值
         with torch.no_grad():
@@ -153,8 +148,7 @@ class SAC:
 
     def get_action(self, observation, evaluate=False):
         with torch.no_grad():
-            observation_tensor = torch.FloatTensor(observation).to(self.device)
-            action_prob = self.actor(observation_tensor)
+            action_prob = self.actor(observation)
             action_dist = Categorical(action_prob)
             if evaluate:
                 action = torch.argmax(action_prob, dim=-1)

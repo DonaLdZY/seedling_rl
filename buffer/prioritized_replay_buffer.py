@@ -64,7 +64,7 @@ class PrioritizedReplayBuffer:
 
         self.beta = min(1.0, self.beta + self.beta_increment)  # 逐渐增加beta
 
-        return sample_to_tensor(zip(*samples)), torch.from_numpy(weights)
+        return zip(*samples), torch.from_numpy(weights)
 
     def update_priorities(self, td_errors):
         if self.sample_ids is None:

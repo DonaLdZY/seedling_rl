@@ -15,13 +15,17 @@ if __name__ == "__main__":
     actor = ActorNet(n_observation, n_action, 3, 128)
     agent_args = {
         'device': "cpu",
-        'actor_optimizer': "adam",
-        'actor_optimizer_args' :{
-            'lr':0.001
+        'actor_optimizer': {
+            "type": "Adam",
+            'params': {
+                'lr': 0.001
+            }
         },
-        'critic_optimizer': "adam",
-        'critic_optimizer_args': {
-            'lr': 0.001
+        'critic_optimizer': {
+            "type": "Adam",
+            'params': {
+                'lr': 0.001
+            }
         },
         'save_name': "test",
     }
@@ -35,5 +39,5 @@ if __name__ == "__main__":
                       get_trajectory_process(),
                       pred_batching=True,
                       pred_batch_size=64,
-                      use_redis=True)
+                      use_redis=False,)
     learner.run("50051", 64)

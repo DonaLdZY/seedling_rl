@@ -9,6 +9,10 @@ class RedisBufferManager:
         :param max_memory: 最大内存限制（单位MB）
         """
         self.client = redis.Redis(host=host, port=port, db=db)
+        try:
+            self.client.ping()
+        except ConnectionError as e:
+            raise ConnectionError(f"无法连接到Redis服务器: {e}") from e
         self.buffer_key = "trajectory_buffer"
         self.max_memory = max_memory * 1024 * 1024  # 转换为字节
         self._init_capacity()

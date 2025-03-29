@@ -43,11 +43,6 @@ class DQN:
 
     def train(self, data, weights=None):
         observations, actions, rewards, next_observations, dones = data
-        observations = observations.to(self.device)
-        next_observations = next_observations.to(self.device)
-        actions = actions.to(self.device)
-        rewards = rewards.to(self.device)
-        dones = dones.to(self.device)
 
         if self.train_step % self.sync_target_step == 0:
             self.sync_target()
@@ -63,7 +58,6 @@ class DQN:
         loss = F.mse_loss(q_eval, q_target.detach())
 
         if weights is not None:
-            weights = weights.to(self.device)
             loss = (weights * loss).mean()
         self.optimizer.zero_grad()
         loss.backward()
@@ -91,8 +85,7 @@ class DQN:
         epsilon = epsilon if epsilon else self.epsilon
         with torch.no_grad():
             if evaluate or (not np.random.uniform()<=epsilon):
-                observation_tensor = torch.FloatTensor(observation).to(self.device)
-                action_value = self.network(observation_tensor).detach()
+                action_value = self.network(observation)
                 action = torch.argmax(action_value, dim=-1).cpu().numpy()
             else :
                 action = np.array([self.random_move() for _ in range(observation.shape[0])])

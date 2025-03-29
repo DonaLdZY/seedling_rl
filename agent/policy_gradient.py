@@ -1,7 +1,7 @@
 import torch
 from torch.distributions import Categorical
 from utils.create_optimizer import create_optimizer
-
+from utils.create_scheduler import create_scheduler
 class PolicyGradient:
     def __init__(self, network, **kwargs):
         self.device = kwargs.get('device', torch.device('cpu'))
@@ -13,6 +13,7 @@ class PolicyGradient:
             self.optimizer = create_optimizer(self.network.parameters(), kwargs['optimizer'])
         except KeyError:
             raise KeyError('optimizer is required')
+        self.scheduler = create_scheduler(self.optimizer, kwargs['scheduler']) if 'scheduler' in kwargs else None
         self.train_step = 0
         self.save_name = kwargs.get('save_name', 'PolicyGradient')
         self.save_step = kwargs.get('save_step', 1000)
@@ -27,11 +28,6 @@ class PolicyGradient:
 
     def train(self, data, weights=None):
         observations, actions, rewards, next_observations, dones = data
-        observations = observations.to(self.device)
-        next_observations = next_observations.to(self.device)
-        actions = actions.to(self.device)
-        rewards = rewards.to(self.device)
-        dones = dones.to(self.device)
 
         action_probs = self.network(observations)
         action_dist = Categorical(action_probs)
@@ -55,8 +51,7 @@ class PolicyGradient:
 
     def get_action(self, observation, evaluate=False):
         with torch.no_grad():
-            observation_tensor = torch.FloatTensor(observation).to(self.device)
-            action_prob = self.network(observation_tensor)
+            action_prob = self.network(observation)
             action_dist = Categorical(action_prob)
             if evaluate:
                 action = torch.argmax(action_prob, dim=-1)  # 选取概率最高的动作

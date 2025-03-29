@@ -14,6 +14,7 @@ import torch
 
 from utils.logger import SpeedLogger, CycleInfoLogger, IncreasingSpeedLogger
 from learner.redis_buffer import RedisBufferManager
+from utils.sample_to_tensor import sample_to_tensor
 class Learner(LearnerServicer):
     def __init__(self, model, buffer,
                  trajectory_process,
@@ -69,7 +70,8 @@ class Learner(LearnerServicer):
             return self.predict(observation)
 
     def predict(self, observation):
-        action, info = self.model.get_action(observation[1])
+        obs = torch.FloatTensor(np.array(observation[1])).to(self.model.device)
+        action, info = self.model.get_action(obs)
         self.state_buffer.store(observation, action, info)
         self.pred_throughput_logger.log(observation[0].shape[0])
         return action
@@ -173,7 +175,11 @@ class Learner(LearnerServicer):
         while True:
             if self.buffer.ready():
                 batch, weights = self.buffer.sample(self.train_batch_size)
+                batch = sample_to_tensor(batch, self.model.device)
+                weights = weights.to(self.model.device) if weights is not None else None
+
                 train_step, loss, td_error = self.model.train(batch, weights)
+
                 self.buffer.update_priorities(td_error)
                 self.train_throughput_logger.log(train_step)
             else:

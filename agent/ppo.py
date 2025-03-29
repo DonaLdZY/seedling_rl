@@ -40,11 +40,6 @@ class PPO:
 
     def train(self, data, weights=None):
         observations, actions, old_log_probs, returns, advantages = data
-        observations = observations.to(self.device)
-        actions = actions.to(self.device)
-        old_log_probs = old_log_probs.to(self.device)
-        returns = returns.to(self.device)
-        advantages = advantages.to(self.device)
 
         action_probs = self.actor(observations)
         action_dist = Categorical(action_probs)
@@ -64,7 +59,6 @@ class PPO:
         self.actor_optimizer.step()
 
         if weights is not None:
-            weights = weights.to(self.device)
             critic_loss = (weights * critic_loss).mean()
 
         self.critic_optimizer.zero_grad()
@@ -89,8 +83,7 @@ class PPO:
 
     def get_action(self, observation, evaluate=False):
         with (torch.no_grad()):
-            observation_tensor = torch.FloatTensor(observation).to(self.device)
-            action_prob = self.actor(observation_tensor)
+            action_prob = self.actor(observation)
             action_dist = Categorical(action_prob)
             if evaluate:
                 action = torch.argmax(action_prob, dim=-1)
@@ -98,7 +91,7 @@ class PPO:
             else:
                 action = action_dist.sample()
                 log_prob = action_dist.log_prob(action)
-                value = self.critic(observation_tensor)
+                value = self.critic(observation)
                 return action.cpu().numpy(), \
                     {
                         "log_probs":log_prob.cpu().numpy(),

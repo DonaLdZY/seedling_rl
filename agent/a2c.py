@@ -39,11 +39,6 @@ class A2C:
 
     def train(self, data, weights=None):
         observations, actions, rewards, next_observations, dones = data
-        observations = observations.to(self.device)
-        next_observations = next_observations.to(self.device)
-        actions = actions.to(self.device)
-        rewards = rewards.to(self.device)
-        dones = dones.to(self.device)
 
         action_probs = self.actor(observations)
         state_values = self.critic(observations)
@@ -63,7 +58,6 @@ class A2C:
         self.actor_optimizer.step()
 
         if weights is not None:
-            weights = weights.to(self.device)
             critic_loss = (weights * critic_loss).mean()
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -87,8 +81,7 @@ class A2C:
 
     def get_action(self, observation, evaluate=False):
         with torch.no_grad():
-            observation_tensor = torch.FloatTensor(observation).to(self.device)
-            action_prob = self.actor(observation_tensor)
+            action_prob = self.actor(observation)
             action_dist = Categorical(action_prob)
             if evaluate:
                 action = torch.argmax(action_prob, dim=-1)

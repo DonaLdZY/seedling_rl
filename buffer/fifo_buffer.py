@@ -37,7 +37,7 @@ class FIFOBuffer:
                 # 如果使用次数达到上限，则从有效索引集合中移除
                 if self.usage[idx] >= self.max_usage:
                     self.valid_indices.remove(idx)
-        return sample_to_tensor(zip(*samples)), None
+        return zip(*samples), None
 
     def update_priorities(self, td_errors):
         pass
