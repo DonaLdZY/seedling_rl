@@ -3,10 +3,13 @@ import torch
 def sample_to_tensor(data, device = None):
     converted = []
     for idx, item in enumerate(data):
-        if idx == 1: # Action!
-            tensor = torch.tensor(np.array(item), dtype=torch.long)
+        if not torch.is_tensor(item):
+            if idx == 1: # Action!
+                tensor = torch.tensor(np.array(item), dtype=torch.long)
+            else:
+                tensor = torch.tensor(np.array(item), dtype=torch.float)
         else:
-            tensor = torch.tensor(np.array(item), dtype=torch.float)
+            tensor = item
         if device is not None:
             tensor = tensor.to(device)
         converted.append(tensor)

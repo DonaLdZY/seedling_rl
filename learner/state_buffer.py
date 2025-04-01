@@ -19,6 +19,7 @@ class StateBuffer:
                     'observations': [next_obs[i]],
                     'actions': [actions[i]],
                     'rewards': [],
+                    'dones': [],
                 }
                 for key, value in extra_dist.items():
                     self.current_trajectories[env_id][key] = [value[i]]
@@ -26,6 +27,7 @@ class StateBuffer:
                 self.current_trajectories[env_id]['observations'].append(next_obs[i])
                 self.current_trajectories[env_id]['actions'].append(actions[i])
                 self.current_trajectories[env_id]['rewards'].append(rewards[i])
+                self.current_trajectories[env_id]['dones'].append(terminated[i])
                 for key, value in extra_dist.items():
                     self.current_trajectories[env_id][key].append(value[i])
 

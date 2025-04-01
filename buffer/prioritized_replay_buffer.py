@@ -67,7 +67,7 @@ class PrioritizedReplayBuffer:
         return zip(*samples), torch.from_numpy(weights)
 
     def update_priorities(self, td_errors):
-        if self.sample_ids is None:
+        if self.sample_ids is None or td_errors is None:
             return
 
         for sid, td_error in zip(self.sample_ids, td_errors):

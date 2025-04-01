@@ -15,18 +15,20 @@ import torch
 from utils.logger import SpeedLogger, CycleInfoLogger, IncreasingSpeedLogger
 from learner.redis_buffer import RedisBufferManager
 from utils.sample_to_tensor import sample_to_tensor
+
 class Learner(LearnerServicer):
-    def __init__(self, model, buffer,
-                 trajectory_process,
+    def __init__(self, agent, buffer,
                  pred_batching:bool = True,
                  **kwargs):
         # learner structure
-        self.model = model
+        self.agent = agent
         self.complete_queue = Queue()
         self.state_buffer = StateBuffer(output_queue=self.complete_queue)
         self.buffer = buffer
-        self.trajectory_process = trajectory_process
+
         self.train_batch_size = kwargs.get('train_batch_size', 64)
+        self.save_dir = kwargs.get('save_dir', 'checkpoints/tmp')
+        self.save_freq = kwargs.get('save_freq', 10000)
 
         # batching layer
         self.pred_batching = pred_batching
@@ -34,6 +36,7 @@ class Learner(LearnerServicer):
             self.pred_queue = Queue()
             self.pred_batch_size = kwargs.get('pred_batch_size', 32)
             self.pred_timeout = kwargs.get('pred_timeout', 0.1)
+            self.auto_batch_size = kwargs.get('auto_batch_size', True)
             self.pred_batch_size_alpha = kwargs.get('pred_batch_size_alpha', 0.1)
             self.pred_expect_batch_size = self.pred_batch_size
             self.pred_last_batch_size = [1]
@@ -41,7 +44,7 @@ class Learner(LearnerServicer):
         # training/data preparing threads
         self.training_thread = threading.Thread(target=self._training_thread, daemon=True)
         self.data_preparing_thread = threading.Thread(target=self._data_preparing_thread, daemon=True)
-
+        # data prefetching
         self.use_redis = kwargs.get('use_redis', False)
         if self.use_redis:
             redis_host = kwargs.get('redis_host', 'localhost')
@@ -55,7 +58,6 @@ class Learner(LearnerServicer):
                 max_memory=redis_max_memory
             )
             self.data_prefetching_thread = threading.Thread(target=self._data_prefetching_threads, daemon=True)
-
         # log
         self.pred_throughput_logger = SpeedLogger("predicting speed |", "actions/s")
         self.train_throughput_logger = IncreasingSpeedLogger("training speed |", "steps/s")
@@ -70,8 +72,8 @@ class Learner(LearnerServicer):
             return self.predict(observation)
 
     def predict(self, observation):
-        obs = torch.FloatTensor(np.array(observation[1])).to(self.model.device)
-        action, info = self.model.get_action(obs)
+        obs = torch.FloatTensor(np.array(observation[1])).to(self.agent.model.device)
+        action, info = self.agent.get_action(obs)
         self.state_buffer.store(observation, action, info)
         self.pred_throughput_logger.log(observation[0].shape[0])
         return action
@@ -84,36 +86,49 @@ class Learner(LearnerServicer):
             batch_size_sum = 0
             start_time = time.time()
             remaining = self.pred_timeout - (time.time() - start_time)
-            while batch_size_sum < self.pred_batch_size and remaining > 0:
-                try:
-                    # 非阻塞获取队列中的任务，直到队列为空
-                    while batch_size_sum < self.pred_batch_size:
-                        observation, future = self.pred_queue.get_nowait()
-                        tasks.append((observation, future))
-                        batch_sizes.append(observation[1].shape[0])
-                        batch_size_sum += observation[1].shape[0]
-                except Empty:
-                    # 队列为空，等待剩余超时时间
-                    remaining = self.pred_timeout * (1 - batch_size_sum / self.pred_expect_batch_size) - (time.time() - start_time)
-                    if remaining <= 0:
-                        break
+
+            if self.auto_batch_size:
+                while batch_size_sum < self.pred_batch_size and remaining > 0:
+                    try:
+                        # 非阻塞获取队列中的任务，直到队列为空
+                        while batch_size_sum < self.pred_batch_size:
+                            observation, future = self.pred_queue.get_nowait()
+                            tasks.append((observation, future))
+                            batch_sizes.append(observation[1].shape[0])
+                            batch_size_sum += observation[1].shape[0]
+                    except Empty:
+                        # 队列为空，等待剩余超时时间
+                        remaining = self.pred_timeout * (1 - batch_size_sum / self.pred_expect_batch_size) - (time.time() - start_time)
+                        if remaining <= 0:
+                            break
+                        try:
+                            observation, future = self.pred_queue.get(timeout=remaining)
+                            tasks.append((observation, future))
+                            batch_sizes.append(observation[1].shape[0])
+                            batch_size_sum += observation[1].shape[0]
+                        except Empty:
+                            break
+                if len(self.pred_last_batch_size) >= 2 and batch_size_sum not in self.pred_last_batch_size:
+                    torch.cuda.empty_cache()
+                    self.pred_last_batch_size = [batch_size_sum]
+                else:
+                    if batch_size_sum not in self.pred_last_batch_size:
+                        self.pred_last_batch_size.append(batch_size_sum)
+
+                self.pred_expect_batch_size = (
+                            min(max(batch_size_sum, 1), self.pred_batch_size) * self.pred_batch_size_alpha
+                            + self.pred_expect_batch_size * (1 - self.pred_batch_size_alpha))
+
+            else:
+                while batch_size_sum < self.pred_batch_size and remaining > 0:
                     try:
                         observation, future = self.pred_queue.get(timeout=remaining)
                         tasks.append((observation, future))
                         batch_sizes.append(observation[1].shape[0])
                         batch_size_sum += observation[1].shape[0]
+                        remaining = self.pred_timeout - (time.time() - start_time)
                     except Empty:
                         break
-
-            if len(self.pred_last_batch_size) >= 1 and batch_size_sum not in self.pred_last_batch_size:
-                torch.cuda.empty_cache()
-                self.pred_last_batch_size = [batch_size_sum]
-            else:
-                if batch_size_sum not in self.pred_last_batch_size:
-                    self.pred_last_batch_size.append(batch_size_sum)
-
-            self.pred_expect_batch_size = (min(max(batch_size_sum, 1), self.pred_batch_size) * self.pred_batch_size_alpha
-                                           + self.pred_expect_batch_size * (1 - self.pred_batch_size_alpha))
 
             if not tasks:
                 continue
@@ -130,7 +145,6 @@ class Learner(LearnerServicer):
             rewards = np.concatenate(reward_list, axis=0)
             terminateds = np.concatenate(terminated_list, axis=0)
             truncateds = np.concatenate(truncated_list, axis=0)
-
             batch_actions = self.predict((
                 env_ids,
                 obs,
@@ -138,7 +152,6 @@ class Learner(LearnerServicer):
                 terminateds,
                 truncateds,
             ))
-
             # 按各请求原始 batch 大小拆分预测结果，并依次处理
             start = 0
             for (obs, future), size in zip(tasks, batch_sizes):
@@ -156,7 +169,7 @@ class Learner(LearnerServicer):
             if self.use_redis and not self.buffer.full():
                 self.redis_mgr.store_trajectory(complete_trajectory)
             else:
-                data_store = self.trajectory_process(complete_trajectory)
+                data_store = self.agent.process_trajectory(complete_trajectory)
                 self.buffer.store(data_store)
 
     def _data_prefetching_threads(self):
@@ -165,7 +178,7 @@ class Learner(LearnerServicer):
             if not self.buffer.full():
                 batch_data = self.redis_mgr.retrieve_trajectories(batch_size=1)  # 根据GPU内存调整
                 for data in batch_data:
-                    data_store = self.trajectory_process(data)
+                    data_store = self.agent.process_trajectory(data)
                     self.buffer.store(data_store)
             else:
                 time.sleep(10)
@@ -175,11 +188,12 @@ class Learner(LearnerServicer):
         while True:
             if self.buffer.ready():
                 batch, weights = self.buffer.sample(self.train_batch_size)
-                batch = sample_to_tensor(batch, self.model.device)
-                weights = weights.to(self.model.device) if weights is not None else None
+                batch = sample_to_tensor(batch, self.agent.model.device)
+                weights = weights.to(self.agent.model.device) if weights is not None else None
 
-                train_step, loss, td_error = self.model.train(batch, weights)
-
+                train_step, loss, td_error = self.agent.train(batch, weights)
+                if train_step % self.save_freq == 0:
+                    self.agent.model.save_checkpoint(self.save_dir, train_step)
                 self.buffer.update_priorities(td_error)
                 self.train_throughput_logger.log(train_step)
             else:

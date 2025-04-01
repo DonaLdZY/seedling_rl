@@ -1,61 +1,69 @@
+import numpy as np
 import torch
+import threading
 from torch.distributions import Categorical
-from utils.create_optimizer import create_optimizer
-from utils.create_scheduler import create_scheduler
+from utils.utils import normalize
+
 class PolicyGradient:
-    def __init__(self, network, **kwargs):
-        self.device = kwargs.get('device', torch.device('cpu'))
-        if isinstance(self.device, str):
-            self.device = torch.device(self.device)
-
-        self.network = network.to(self.device)
-        try:
-            self.optimizer = create_optimizer(self.network.parameters(), kwargs['optimizer'])
-        except KeyError:
-            raise KeyError('optimizer is required')
-        self.scheduler = create_scheduler(self.optimizer, kwargs['scheduler']) if 'scheduler' in kwargs else None
+    def __init__(self, model, **kwargs):
+        self.model = model
         self.train_step = 0
-        self.save_name = kwargs.get('save_name', 'PolicyGradient')
-        self.save_step = kwargs.get('save_step', 1000)
+        self.lock = threading.Lock()
+        self.gamma = kwargs.get('gamma', 0.99)
+        self.use_importance = kwargs.get('use_importance', True)
+
+    def get_action(self, observation, evaluate=False):
+        with torch.no_grad():
+            action_prob = self.model(observation)
+            action_dist = Categorical(action_prob)
+            if evaluate:
+                action = torch.argmax(action_prob, dim=-1)
+                return action.cpu().numpy(), None
+            else:
+                action = action_dist.sample()
+                log_probs = action_dist.log_prob(action)
+                return action.cpu().numpy(), {"log_probs": log_probs.cpu().numpy(), }
 
 
-    def save_model(self, file_name):
-        torch.save(self.network.state_dict(), file_name + ".pth")
-
-    def load_model(self, file_name):
-        self.network.load_state_dict(torch.load(file_name + ".pth", map_location=self.device))
+    def process_trajectory(self, trajectory):
+        obs = trajectory['observations'][:-1]  # 去掉最后一个终止状态
+        actions = trajectory['actions'][:-1]
+        log_probs = trajectory['log_probs'][:-1]
+        rewards = trajectory['rewards']
+        episode_length = len(obs)
+        advantage = np.zeros_like(rewards, dtype=np.float32)
+        G = 0.0
+        for t in reversed(range(episode_length)):
+            G = rewards[t] + self.gamma * G
+            advantage[t] = G
+        transitions = list(zip(obs, actions, log_probs, advantage))
+        return transitions
 
 
     def train(self, data, weights=None):
-        observations, actions, rewards, next_observations, dones = data
-
-        action_probs = self.network(observations)
+        obs, actions, old_log_probs, advantages = data
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        action_probs = self.model(obs)
         action_dist = Categorical(action_probs)
         log_probs = action_dist.log_prob(actions)
-        loss = (-log_probs * rewards).sum()
 
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        if self.use_importance:
+            importance = torch.exp(log_probs - old_log_probs).detach()
+            loss = (-log_probs * advantages.detach() * importance).mean()
+        else:
+            loss = (-log_probs * advantages.detach()).mean()
 
-        if self.scheduler is not None:
-            self.scheduler.step()
+        loss = loss.mean().unsqueeze(-1)
 
-        self.train_step+=1
-        if self.train_step % self.save_step == 0:
-            self.save_model(self.save_name)
+        self.model.backward(loss)
+        self.model.step()
+        self.train_step += 1
+
         return (self.train_step,
                 loss.detach().cpu().numpy(),
                 None)
 
 
-    def get_action(self, observation, evaluate=False):
-        with torch.no_grad():
-            action_prob = self.network(observation)
-            action_dist = Categorical(action_prob)
-            if evaluate:
-                action = torch.argmax(action_prob, dim=-1)  # 选取概率最高的动作
-            else:
-                action = action_dist.sample()
-        return action.cpu().numpy(), None
+
+
 
